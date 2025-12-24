@@ -1,11 +1,5 @@
 import { api } from "./api";
 
-export type VendorPayload = {
-  name: string;
-  email: string;
-  phone: string;
-};
-
 export type Vendor = {
   id: string;
   name: string;
@@ -14,25 +8,64 @@ export type Vendor = {
   status: "ACTIVE" | "INACTIVE";
 };
 
+export type CreateVendorPayload = {
+  name: string;
+  email: string;
+  phone: string;
+};
+
+/**
+ * ADMIN – Onboard Vendor
+ * POST /api/grooming/vendors
+ */
+export const createVendor = async (
+  payload: CreateVendorPayload
+): Promise<Vendor> => {
+  const res = await api.post("/api/grooming/vendors", payload);
+  return res.data;
+};
+
+/**
+ * ADMIN – List Vendors
+ * GET /api/grooming/vendors
+ */
 export const getVendors = async (): Promise<Vendor[]> => {
-  const res = await api.get("/vendors");
+  const res = await api.get("/api/grooming/vendors");
   return res.data || [];
 };
 
-export const createVendor = async (payload: VendorPayload) => {
-  const res = await api.post("/vendors", payload);
+/**
+ * ADMIN – Get Vendor by ID
+ * GET /api/grooming/vendors/{vendorId}
+ */
+export const getVendorById = async (
+  vendorId: string
+): Promise<Vendor> => {
+  const res = await api.get(`/api/grooming/vendors/${vendorId}`);
   return res.data;
 };
 
+/**
+ * ADMIN – Update Vendor
+ * PATCH /api/grooming/vendors/{vendorId}
+ */
 export const updateVendor = async (
-  id: string,
-  payload: Partial<VendorPayload & { status: Vendor["status"] }>
-) => {
-  const res = await api.put(`/vendors/${id}`, payload);
+  vendorId: string,
+  payload: Partial<CreateVendorPayload & { status: Vendor["status"] }>
+): Promise<Vendor> => {
+  const res = await api.patch(
+    `/api/grooming/vendors/${vendorId}`,
+    payload
+  );
   return res.data;
 };
 
-export const deleteVendor = async (id: string) => {
-  const res = await api.delete(`/vendors/${id}`);
+/**
+ * ADMIN – Delete Vendor (if supported)
+ */
+export const deleteVendor = async (vendorId: string) => {
+  const res = await api.delete(
+    `/api/grooming/vendors/${vendorId}`
+  );
   return res.data;
 };
