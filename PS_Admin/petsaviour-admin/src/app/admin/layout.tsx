@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/auth.store";
 import Sidebar from "../../components/layout/Sidebar";
 import Header from "../../components/layout/Header";
+import { useUIStore } from "../../store/ui.store";
+
 
 export default function AdminLayout({
   children,
@@ -12,25 +14,52 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const setMobile = useUIStore((s) => s.setMobile);
+
 
   useEffect(() => {
-    if (!user) {
+    if (!token) {
       router.replace("/auth/login");
     }
-  }, [user, router]);
+  }, [token, router]);
 
-  if (!user) return null;
+
+  if (!token) return null;
+
+  useEffect(() => {
+  const checkMobile = () => {
+    setMobile(window.innerWidth < 768);
+  };
+
+  checkMobile();
+  window.addEventListener("resize", checkMobile);
+
+  return () => window.removeEventListener("resize", checkMobile);
+}, [setMobile]);
+
+const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+const isMobile = useUIStore((s) => s.isMobile);
+const closeSidebar = useUIStore((s) => s.closeSidebar);
+
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 bg-background-light dark:bg-background-dark">
-          {children}
-        </main>
-      </div>
-    </div>
+   <div className="flex min-h-screen bg-gray-50 overflow-hidden relative">
+  {/* Mobile backdrop */}
+  {isMobile && sidebarOpen && (
+    <div
+      onClick={closeSidebar}
+      className="fixed inset-0 bg-black bg-opacity-40 z-40"
+    />
+  )}
+
+  <Sidebar />
+
+  <div className="flex-1 flex flex-col relative z-0">
+    <Header />
+    <main className="flex-1 p-6">{children}</main>
+  </div>
+</div>
+
   );
 }

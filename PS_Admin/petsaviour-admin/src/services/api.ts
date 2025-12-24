@@ -1,32 +1,35 @@
 import axios from "axios";
-
-// const baseURL = process.env.NEXT_PUBLIC_API_URL;
-// console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
-// if (!baseURL) {
-//   console.warn("NEXT_PUBLIC_API_URL is not defined");
-// }
-// export const api = axios.create({
-//   baseURL,
-//   withCredentials: true,
-//   headers: {
-//     "Content-Type": "application/json",
-//   },
-// });
-
+import { useAuthStore } from "../store/auth.store";
 
 export const api = axios.create({
   baseURL: "/api",
-  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
+// Attach token automatically
+api.interceptors.request.use(
+  (config) => {
+    const token = useAuthStore.getState().token;
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.error("Unauthorized request");
+      // Token expired / invalid
+      useAuthStore.getState().logout();
+      window.location.href = "/auth/login";
     }
     return Promise.reject(error);
   }

@@ -1,16 +1,20 @@
 import { api } from "./api";
 
-export type LoginPayload = {
-  email: string;
-  password: string;
+export type AdminLoginResponse = {
+  token: string;
+  role: "admin";
 };
 
-export const loginApi = async (payload: LoginPayload) => {
+export const adminLoginApi = async (payload: {
+  email: string;
+  password: string;
+}): Promise<AdminLoginResponse> => {
   const res = await api.post("/auth/login", payload);
 
-  console.log("loginres" , res)
-  return {
-    token: res.data?.token ?? null,
-    user: res.data?.user ?? null,
-  };
+  // API.html contract check
+  if (!res.data?.token || !res.data?.role) {
+    throw new Error("Invalid login response");
+  }
+
+  return res.data;
 };
