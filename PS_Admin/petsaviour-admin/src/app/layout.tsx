@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAuthStore } from "../store/auth.store";
 import "./globals.css";
+import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({
   children,
@@ -17,7 +18,20 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>{children}
+         {/* GLOBAL TOASTER */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              borderRadius: "8px",
+              background: "#333",
+              color: "#fff",
+            },
+          }}
+        />
+      </body>
     </html>
   );
 }

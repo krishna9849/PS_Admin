@@ -162,7 +162,7 @@ export default function LoginPage() {
         console.log(res);
       }
 
-      setAuth(res.token, role);
+      setAuth(res.token, role,res.vendorId);
       // router.replace("/admin/dashboard");
       if (role === "admin") {
   router.replace("/admin/dashboard");

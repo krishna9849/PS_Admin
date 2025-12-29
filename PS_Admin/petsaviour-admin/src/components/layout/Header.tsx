@@ -11,6 +11,7 @@ import { headerTitles } from "./header.config";
 
 
 export default function Header() {
+ 
   const pathname = usePathname();
 const title =
   headerTitles[pathname] ||
