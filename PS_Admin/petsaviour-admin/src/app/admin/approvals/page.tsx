@@ -1,141 +1,247 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getApprovalRequests,
-  approveRequest,
-  rejectRequest,
-} from "../../../services/approval.service";
+import { toastError, toastSuccess } from "../../../utils/toast";
+import { getApprovalRequests } from "../../../services/approval.service";
+
+/* =========================
+   TYPES (BASED ON REAL API)
+========================= */
 
 type ApprovalRequest = {
   _id: string;
-  vendor: string;
   type: string;
-  action: string;
-  payload: Record<string, any>;
-  status: "pending" | "approved" | "rejected";
-  requestedBy: string;
+  action: "create" | "update" | "delete";
+  status: string;
   createdAt: string;
+  review: {
+    diff: {
+      field: string;
+      before?: any;
+      after?: any;
+    }[];
+    entities: {
+      vendor?: {
+        name: string;
+        email: string;
+        phone: string;
+      };
+      service?: {
+        name: string;
+        category: string;
+        grossPrice: number;
+        currency: string;
+      };
+      staff?: {
+        name: string;
+        role: string;
+      };
+    };
+  };
 };
 
-export default function AdminApprovalsPage() {
-  const [requests, setRequests] = useState<ApprovalRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+type ApprovalUI = {
+  id: string;
+  title: string;
+  summary: string;
+  createdAt: string;
+  action: string;
+  entities: ApprovalRequest["review"]["entities"];
+  diff: ApprovalRequest["review"]["diff"];
+};
 
-  const loadApprovals = async () => {
-    try {
-      setLoading(true);
-      const res = await getApprovalRequests();
-      setRequests(res.requests || []);
-    } catch {
-      setError("Failed to load approval requests");
-    } finally {
-      setLoading(false);
-    }
+/* =========================
+   HELPERS
+========================= */
+
+function mapApproval(req: ApprovalRequest): ApprovalUI {
+  const entity = req.review.entities;
+
+  let title = "Approval Request";
+  let summary = "Update requested";
+
+  if (entity.service) {
+    title = `${req.action.toUpperCase()} Service`;
+    summary = `Service "${entity.service.name}" requested`;
+  } else if (entity.vendor) {
+    title = `${req.action.toUpperCase()} Vendor`;
+    summary = `Vendor "${entity.vendor.name}" updated details`;
+  } else if (entity.staff) {
+    title = `${req.action.toUpperCase()} Staff`;
+    summary = `Staff "${entity.staff.name}" updated`;
+  }
+
+  return {
+    id: req._id,
+    title,
+    summary,
+    createdAt: req.createdAt,
+    action: req.action,
+    entities: entity,
+    diff: req.review.diff,
   };
+}
 
+/* =========================
+   PAGE
+========================= */
+
+export default function AdminApprovalsPage() {
+  const [items, setItems] = useState<ApprovalUI[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  /* ---------- LOAD ---------- */
   useEffect(() => {
-    loadApprovals();
+    async function load() {
+      try {
+        setLoading(true);
+        const res = await getApprovalRequests("pending");
+
+        // IMPORTANT FIX
+        const list = Array.isArray(res?.requests)
+          ? res.requests
+          : [];
+
+        setItems(list.map(mapApproval));
+      } catch {
+        toastError("Failed to load approval requests");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
   }, []);
 
-  const handleApprove = async (id: string) => {
-    if (!confirm("Approve this request?")) return;
-    await approveRequest(id);
-    loadApprovals();
+  /* ---------- ACTIONS (STUB) ---------- */
+  const handleApprove = (id: string) => {
+    toastSuccess("Approved (API to be wired)");
   };
 
-  const handleReject = async (id: string) => {
-    if (!confirm("Reject this request?")) return;
-    await rejectRequest(id);
-    loadApprovals();
+  const handleReject = (id: string) => {
+    toastError("Rejected (API to be wired)");
   };
 
+  /* ---------- UI ---------- */
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">
-        Approval Requests
-      </h1>
+      <h1 className="text-2xl font-semibold">Approvals</h1>
 
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded">
-          {error}
-        </div>
+      {loading && <p>Loading...</p>}
+
+      {!loading && items.length === 0 && (
+        <p className="text-gray-500">No pending approvals</p>
       )}
 
-      <div className="bg-white rounded shadow overflow-x-auto">
-        {loading ? (
-          <p className="p-6">Loading...</p>
-        ) : requests.length === 0 ? (
-          <p className="p-6 text-gray-500">
-            No pending approvals
-          </p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left">
-              <tr>
-                <th className="p-3">Type</th>
-                <th className="p-3">Action</th>
-                <th className="p-3">Vendor</th>
-                <th className="p-3">Payload</th>
-                <th className="p-3">Requested At</th>
-                <th className="p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((r) => (
-                <tr key={r._id} className="border-t">
-                  <td className="p-3 capitalize">
-                    {r.type.replace("_", " ")}
-                  </td>
-                  <td className="p-3 capitalize">
-                    {r.action}
-                  </td>
-                  <td className="p-3 text-xs">
-                    {r.vendor}
-                  </td>
-                  <td className="p-3 text-xs">
-                    <pre className="bg-gray-100 p-2 rounded">
-                      {JSON.stringify(r.payload, null, 2)}
-                    </pre>
-                  </td>
-                  <td className="p-3">
-                    {new Date(
-                      r.createdAt
-                    ).toLocaleString()}
-                  </td>
-                  <td className="p-3 space-x-2">
-                    {r.status === "pending" ? (
-                      <>
-                        <button
-                          onClick={() =>
-                            handleApprove(r._id)
-                          }
-                          className="px-3 py-1 bg-green-500 text-white rounded text-xs"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleReject(r._id)
-                          }
-                          className="px-3 py-1 bg-red-500 text-white rounded text-xs"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-gray-500">
-                        {r.status}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {items.map((item) => {
+        const isOpen = expanded === item.id;
+
+        return (
+          <div
+            key={item.id}
+            className="border rounded bg-white shadow-sm"
+          >
+            {/* HEADER */}
+            <div
+              className="p-4 flex justify-between items-center cursor-pointer"
+              onClick={() =>
+                setExpanded(isOpen ? null : item.id)
+              }
+            >
+              <div>
+                <p className="font-medium">{item.title}</p>
+                <p className="text-sm text-gray-600">
+                  {item.summary}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {new Date(item.createdAt).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleApprove(item.id);
+                  }}
+                  className="px-3 py-1 text-sm bg-green-500 text-white rounded"
+                >
+                  Approve
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReject(item.id);
+                  }}
+                  className="px-3 py-1 text-sm bg-red-500 text-white rounded"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+
+            {/* EXPANDED */}
+            {isOpen && (
+              <div className="border-t bg-gray-50 p-4 space-y-4">
+                {/* ENTITY DETAILS */}
+                {item.entities.service && (
+                  <div>
+                    <h3 className="font-medium mb-1">
+                      Service Details
+                    </h3>
+                    <p>Name: {item.entities.service.name}</p>
+                    <p>
+                      Category:{" "}
+                      {item.entities.service.category}
+                    </p>
+                    <p>
+                      Price: ₹
+                      {item.entities.service.grossPrice}{" "}
+                      {item.entities.service.currency}
+                    </p>
+                  </div>
+                )}
+
+                {item.entities.vendor && (
+                  <div>
+                    <h3 className="font-medium mb-1">
+                      Vendor Details
+                    </h3>
+                    <p>Name: {item.entities.vendor.name}</p>
+                    <p>Email: {item.entities.vendor.email}</p>
+                    <p>Phone: {item.entities.vendor.phone}</p>
+                  </div>
+                )}
+
+                {/* DIFF */}
+                <div>
+                  <h3 className="font-medium mb-1">
+                    Changes
+                  </h3>
+                  {item.diff.length === 0 ? (
+                    <p className="text-gray-500 text-sm">
+                      No field-level changes
+                    </p>
+                  ) : (
+                    <ul className="text-sm space-y-1">
+                      {item.diff.map((d, i) => (
+                        <li key={i}>
+                          <span className="font-medium">
+                            {d.field}
+                          </span>{" "}
+                          → {String(d.after)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

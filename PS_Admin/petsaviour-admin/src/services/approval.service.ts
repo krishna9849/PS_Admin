@@ -1,7 +1,7 @@
 import {api} from "./api";
 
-export const getApprovalRequests = async () => {
-  const res = await api.get("/api/approvals/requests");
+export const getApprovalRequests = async (status: string) => {
+  const res = await api.get(`/api/approvals/requests?status=${status}`);
   return res.data;
 };
 
